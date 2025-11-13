@@ -1,0 +1,36 @@
+[project]
+name = "legal-aide"
+version = "0.1.0"
+description = "LegalAide – Supreme Court legal research assistant with RAG over pgvector."
+requires-python = ">=3.11"
+authors = [
+  { name = "LegalAide Team" }
+]
+dependencies = [
+  "fastapi>=0.110.0",
+  "uvicorn>=0.29.0",
+  "psycopg[binary]>=3.1.18",
+  "sqlalchemy>=2.0.29",
+  "alembic>=1.13.1",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.2.1",
+  "python-dotenv>=1.0.1",
+  "pgvector>=0.2.4",
+  "PyPDF2>=3.0.1",
+  "pdf2image>=1.17.0",
+  "pytesseract>=0.3.10",
+  "Pillow>=10.3.0",
+  "numpy>=1.26.4",
+  "tenacity>=8.2.3",
+  "httpx>=0.27.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "black",
+  "ruff"
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
