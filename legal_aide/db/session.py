@@ -19,15 +19,17 @@ def get_connection_pool(settings: Settings) -> ConnectionPool:
     """Return a global ConnectionPool instance."""
     global _POOL
     if _POOL is None:
+        def configure_connection(conn):
+            """Register pgvector on each connection checked out from the pool."""
+            register_vector(conn)
+        
         _POOL = ConnectionPool(
             conninfo=settings.database_url,
             min_size=1,
             max_size=10,
             open=True,
+            configure=configure_connection,
         )
-        # register vector type on the first connection
-        with _POOL.connection() as conn:
-            register_vector(conn)
     return _POOL
 
 

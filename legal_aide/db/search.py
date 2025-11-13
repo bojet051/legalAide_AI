@@ -52,9 +52,9 @@ def search_chunks(
                 title,
                 promulgation_date,
                 court,
-                embedding <-> %s AS distance
+                embedding <-> %s::vector AS distance
             FROM filtered
-            ORDER BY embedding <-> %s
+            ORDER BY embedding <-> %s::vector
             LIMIT %s
             """,
             (

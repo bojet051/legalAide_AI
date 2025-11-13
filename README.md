@@ -38,6 +38,29 @@ LegalAide is a retrieval-augmented question-answering MVP for Philippine Supreme
 
 Use `/docs` for interactive API exploration.
 
+## Environment variables
+
+Create a `.env` (copy from `.env.example`) and set the variables below. Keep secrets out of source control and use a secret manager in production.
+
+Required (backend)
+- `DATABASE_URL` — PostgreSQL DSN (e.g. `postgresql://user:pass@host:5432/dbname`).
+
+Optional / configuration
+- `EMBEDDING_API_URL` — HTTP endpoint for the embedding service (if using a hosted embedder).
+- `EMBEDDING_API_KEY` — API key for the embedding service.
+- `EMBEDDING_MODEL` — embedding model name (used by the embedding client).
+- `EMBEDDING_DIM` — embedding vector dimension (integer).
+- `LLM_API_URL` — HTTP endpoint for the LLM (OpenAI-like API).
+- `LLM_API_KEY` — API key for the LLM service.
+- `LLM_MODEL` — model identifier used when calling the LLM.
+- `TESSERACT_CMD` — path to the `tesseract` binary (only needed for OCR on scanned PDFs).
+- `CHUNK_TOKEN_SIZE` — tokens per chunk (backend chunking setting).
+- `CHUNK_OVERLAP_RATIO` — sliding window overlap ratio (0.0-1.0).
+
+Frontend
+- `VITE_API_BASE_URL` — base URL for the backend API (defaults to `http://localhost:8000` if not set).
+
+
 ## Frontend Console
 
 A companion React/Tailwind console lives under `frontend/` for ingestion + research workflows.
