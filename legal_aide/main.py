@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from legal_aide.api import router
 from legal_aide.config import get_settings
@@ -32,6 +33,12 @@ def create_app() -> FastAPI:
     rag_engine = RagEngine(settings, embedding_client, db_pool)
 
     app = FastAPI(title="LegalAide", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],  # tighten for production
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.include_router(router)
     app.state.settings = settings
     app.state.embedding_client = embedding_client

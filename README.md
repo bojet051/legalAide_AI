@@ -37,3 +37,16 @@ LegalAide is a retrieval-augmented question-answering MVP for Philippine Supreme
    ```
 
 Use `/docs` for interactive API exploration.
+
+## Frontend Console
+
+A companion React/Tailwind console lives under `frontend/` for ingestion + research workflows.
+
+```bash
+cd frontend
+cp .env.example .env  # optional override of VITE_API_BASE_URL
+pnpm install
+pnpm dev
+```
+
+The frontend expects the FastAPI server (with CORS enabled) to be running locally on port `8000`.

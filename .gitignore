@@ -1,0 +1,24 @@
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# Frontend node artifacts
+frontend/node_modules/
+frontend/dist/
+.parcel-cache/
+
+# macOS
+.DS_Store

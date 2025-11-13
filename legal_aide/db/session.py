@@ -25,7 +25,9 @@ def get_connection_pool(settings: Settings) -> ConnectionPool:
             max_size=10,
             open=True,
         )
-        register_vector(_POOL)
+        # register vector type on the first connection
+        with _POOL.connection() as conn:
+            register_vector(conn)
     return _POOL
 
 
