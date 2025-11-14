@@ -16,7 +16,7 @@ from psycopg_pool import ConnectionPool
 from legal_aide.config import Settings
 from legal_aide.db import queries
 from legal_aide.embeddings import EmbeddingClient
-from legal_aide.ingestion import ocr, parsing
+from legal_aide.ingestion import parsing
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +92,6 @@ class IngestionPipeline:
             text = page.extract_text() or ""
             raw_pages.append(text)
         combined = "\n\n".join(raw_pages).strip()
-
-        if len(combined) < 200:
-            logger.info("Detected scanned PDF for %s. Running OCR.", path)
-            combined = ocr.ocr_pdf(path, self.settings.ocr_tesseract_cmd)
 
         cleaned = parsing.clean_text(combined)
         metadata_dict = parsing.extract_case_metadata(cleaned)

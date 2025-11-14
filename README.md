@@ -38,6 +38,24 @@ LegalAide is a retrieval-augmented question-answering MVP for Philippine Supreme
 
 Use `/docs` for interactive API exploration.
 
+## Data scraping utility
+
+The repository ships with `scripts/scrape_elibrary.py`, a polite scraper that walks the
+Philippine Supreme Court E-Library “Bookshelf” (category 1) from 1996 through 2025,
+collecting metadata plus full decision texts.
+
+```bash
+python scripts/scrape_elibrary.py --output-dir data
+```
+
+Key behaviors:
+- Honors `robots.txt`, rate-limits requests (2–5 s jitter), and stops if CAPTCHAs or access-denied pages appear.
+- Parses each year/month bucket, follows pagination, grabs docket/title/date/ponente/division/keywords, and saves metadata to `metadata.csv` and `metadata.json`.
+- Downloads each decision body into `data/full_texts/decision_<doc_id>.txt`.
+- Supports optional Selenium fallback (`--use-selenium`) if a month page renders without static HTML content.
+
+Use `--max-decisions N` when testing to avoid long runs. The outputs can later feed the ingestion pipeline without requiring OCR because the site already exposes text.
+
 ## Environment variables
 
 Create a `.env` (copy from `.env.example`) and set the variables below. Keep secrets out of source control and use a secret manager in production.
