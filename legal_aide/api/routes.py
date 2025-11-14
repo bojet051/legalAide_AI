@@ -1,5 +1,5 @@
 """
-FastAPI routes for ingestion, search, and RAG answering.
+FastAPI routes for ingestion, search, RAG answering, and eLibrary sync.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from legal_aide.db import queries, search
 
 router = APIRouter()
+sync_router = APIRouter(prefix="/sync", tags=["sync"])
 
 
 def get_app_state(request: Request):
@@ -158,3 +159,158 @@ async def get_case(case_id: int, state=Depends(get_app_state)):
         chunks = queries.fetch_case_chunks(conn, case_id)
     case["chunks"] = chunks
     return case
+
+
+# --- Sync Module Endpoints ---
+
+class SyncCheckRequest(BaseModel):
+    year_from: int = Field(2024, ge=1996, le=2025)
+    year_to: int = Field(2025, ge=1996, le=2025)
+    max_per_month: int = Field(10, ge=1, le=100)
+
+
+class SyncIngestRequest(BaseModel):
+    limit: Optional[int] = Field(None, description="Max number of decisions to ingest (None = all)")
+
+
+@sync_router.post("/check")
+async def sync_check_new_decisions(payload: SyncCheckRequest, state=Depends(get_app_state)):
+    """Check eLibrary for new decisions and stage them in the queue."""
+    sync_service = state.sync_service
+    
+    try:
+        sync_job_id = await run_in_threadpool(
+            sync_service.check_for_new_decisions,
+            payload.year_from,
+            payload.year_to,
+            payload.max_per_month
+        )
+        
+        # Get sync job results
+        with state.db_pool.connection() as conn:
+            result = conn.execute(
+                """
+                SELECT status, total_checked, new_found, failed_count
+                FROM sync_jobs 
+                WHERE id = %s
+                """,
+                (sync_job_id,)
+            ).fetchone()
+        
+        if not result:
+            raise HTTPException(status_code=404, detail="Sync job not found")
+        
+        return {
+            "job_id": sync_job_id,
+            "status": result[0],
+            "total_checked": result[1] or 0,
+            "new_found": result[2] or 0,
+            "failed": result[3] or 0,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Sync check failed: {exc}")
+
+
+@sync_router.post("/download")
+async def sync_download_pdfs(state=Depends(get_app_state)):
+    """Download PDFs for all pending decisions."""
+    sync_service = state.sync_service
+    result = await run_in_threadpool(sync_service.download_pending_pdfs)
+    return result
+
+
+@sync_router.post("/ingest")
+async def sync_ingest_decisions(payload: SyncIngestRequest, state=Depends(get_app_state)):
+    """Ingest downloaded decisions using the existing pipeline."""
+    sync_service = state.sync_service
+    pipeline = state.pipeline
+    
+    result = await run_in_threadpool(
+        sync_service.ingest_pending_decisions,
+        pipeline,
+        payload.limit
+    )
+    return result
+
+
+@sync_router.get("/pending")
+async def sync_get_pending(state=Depends(get_app_state)):
+    """Get list of pending decisions."""
+    with state.db_pool.connection() as conn:
+        pending = conn.execute(
+            """
+            SELECT id, doc_id, docket_no, title, decision_date, status, 
+                   error_message, created_at, updated_at
+            FROM pending_decisions
+            ORDER BY created_at DESC
+            """
+        ).fetchall()
+    
+    return {
+        "pending": [
+            {
+                "id": row[0],
+                "doc_id": row[1],
+                "docket_no": row[2],
+                "title": row[3],
+                "decision_date": row[4].isoformat() if row[4] else None,
+                "status": row[5],
+                "error_message": row[6],
+                "created_at": row[7].isoformat(),
+                "updated_at": row[8].isoformat(),
+            }
+            for row in pending
+        ]
+    }
+
+
+@sync_router.get("/status")
+async def sync_get_status(state=Depends(get_app_state)):
+    """Get sync module status and statistics."""
+    with state.db_pool.connection() as conn:
+        stats = conn.execute(
+            """
+            SELECT 
+                COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+                COUNT(*) FILTER (WHERE status = 'downloading') as downloading_count,
+                COUNT(*) FILTER (WHERE status = 'downloaded') as downloaded_count,
+                COUNT(*) FILTER (WHERE status = 'ingesting') as ingesting_count,
+                COUNT(*) FILTER (WHERE status = 'ingested') as ingested_count,
+                COUNT(*) FILTER (WHERE status = 'failed') as failed_count
+            FROM pending_decisions
+            """
+        ).fetchone()
+        
+        recent_jobs = conn.execute(
+            """
+            SELECT id, started_at, completed_at, status, total_checked, 
+                   new_found, downloaded, failed
+            FROM sync_jobs
+            ORDER BY started_at DESC
+            LIMIT 10
+            """
+        ).fetchall()
+    
+    return {
+        "stats": {
+            "pending": stats[0] or 0,
+            "downloading": stats[1] or 0,
+            "downloaded": stats[2] or 0,
+            "ingesting": stats[3] or 0,
+            "ingested": stats[4] or 0,
+            "failed": stats[5] or 0,
+        },
+        "recent_jobs": [
+            {
+                "id": row[0],
+                "started_at": row[1].isoformat(),
+                "completed_at": row[2].isoformat() if row[2] else None,
+                "status": row[3],
+                "total_checked": row[4],
+                "new_found": row[5],
+                "downloaded": row[6],
+                "failed": row[7],
+            }
+            for row in recent_jobs
+        ]
+    }

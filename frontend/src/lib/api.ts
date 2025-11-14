@@ -68,3 +68,32 @@ export function normalizeFilters(filters: SearchFilters): SearchFilters {
     case_number: filters.case_number || undefined,
   }
 }
+
+// Sync API
+export async function checkNewDecisions(yearFrom: number, yearTo: number, maxPerMonth: number) {
+  return request<import('./types').CheckResponse>('/sync/check', {
+    method: 'POST',
+    body: JSON.stringify({ year_from: yearFrom, year_to: yearTo, max_per_month: maxPerMonth }),
+  })
+}
+
+export async function downloadPendingPdfs() {
+  return request<import('./types').DownloadResponse>('/sync/download', {
+    method: 'POST',
+  })
+}
+
+export async function ingestPendingDecisions(limit?: number) {
+  return request<import('./types').IngestResponse>('/sync/ingest', {
+    method: 'POST',
+    body: JSON.stringify({ limit }),
+  })
+}
+
+export async function getPendingDecisions() {
+  return request<import('./types').PendingResponse>('/sync/pending')
+}
+
+export async function getSyncStatus() {
+  return request<import('./types').SyncStatusResponse>('/sync/status')
+}

@@ -6,6 +6,7 @@ import DashboardView from './pages/Dashboard'
 import IngestionView from './pages/Ingestion'
 import ResearchView from './pages/Research'
 import CasesView from './pages/Cases'
+import SyncView from './pages/Sync'
 
 export default function App() {
   const [activity, setActivity] = useState<ActivityItem[]>([])
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/ingest" element={<IngestionView onActivity={recordActivity} />} />
         <Route path="/research" element={<ResearchView onActivity={recordActivity} />} />
         <Route path="/cases" element={<CasesView onActivity={recordActivity} />} />
+        <Route path="/sync" element={<SyncView onActivity={recordActivity} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AppShell>

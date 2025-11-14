@@ -188,8 +188,13 @@ class ElibraryScraper:
             docket_no = docket_el.get_text(strip=True) if docket_el else anchor.get_text(strip=True)
             small = anchor.find("small")
             title = small.get_text(" ", strip=True) if small else ""
-            date_text = self._extract_date_from_anchor(anchor, fallback=soup.title.string if soup.title else "")
-            url = anchor["href"]
+            fallback_title = soup.title.string if soup.title and soup.title.string else ""
+            date_text = self._extract_date_from_anchor(anchor, fallback=fallback_title)
+            
+            href = anchor.get("href")
+            if not isinstance(href, str):
+                continue
+            url: str = href
             doc_id = self._extract_doc_id(url)
             entries.append(
                 {
@@ -235,17 +240,21 @@ class ElibraryScraper:
                 sibling_name = getattr(sibling, "name", None)
                 if sibling_name and sibling_name.lower() == "h2":
                     break
-                # Check if this sibling itself is an anchor
-                if sibling_name == "a" and sibling.get("href"):
+                # Check if this sibling itself is an anchor (with type guard)
+                if sibling_name == "a" and hasattr(sibling, 'get') and sibling.get("href"):
                     month_label = sibling.get_text(strip=True)
                     if MONTH_PATTERN.match(month_label):
-                        month_pairs.append((month_label, sibling["href"]))
+                        href = sibling.get("href")
+                        if isinstance(href, str):
+                            month_pairs.append((month_label, href))
                 # Also check for anchors nested inside this sibling
                 elif hasattr(sibling, "find_all"):
                     for anchor in sibling.find_all("a", href=True):
                         month_label = anchor.get_text(strip=True)
                         if MONTH_PATTERN.match(month_label):
-                            month_pairs.append((month_label, anchor["href"]))
+                            href = anchor.get("href")
+                            if isinstance(href, str):
+                                month_pairs.append((month_label, href))
             if month_pairs:
                 year_links[year] = month_pairs
         return year_links

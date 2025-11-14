@@ -62,3 +62,69 @@ export interface ActivityItem {
   description: string
   timestamp: string
 }
+
+export interface PendingDecision {
+  id: number
+  doc_id: string
+  docket_no: string | null
+  title: string | null
+  promulgation_date: string | null
+  elibrary_url: string
+  status: 'pending' | 'downloading' | 'downloaded' | 'ingesting' | 'ingested' | 'failed'
+  file_path: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SyncJob {
+  id: number
+  job_type: 'check' | 'download' | 'ingest'
+  status: 'running' | 'completed' | 'failed'
+  year_from: number | null
+  year_to: number | null
+  max_per_month: number | null
+  new_found: number | null
+  total_checked: number | null
+  downloaded: number | null
+  ingested: number | null
+  failed_count: number | null
+  error_message: string | null
+  started_at: string
+  completed_at: string | null
+}
+
+export interface CheckResponse {
+  new_found: number
+  total_checked: number
+  job_id: number
+}
+
+export interface DownloadResponse {
+  downloaded: number
+  failed: number
+  job_id: number
+}
+
+export interface IngestResponse {
+  ingested: number
+  failed: number
+  job_id: number
+}
+
+export interface PendingResponse {
+  pending: PendingDecision[]
+  count: number
+}
+
+export interface SyncStatusResponse {
+  stats: {
+    pending: number
+    downloading: number
+    downloaded: number
+    ingesting: number
+    ingested: number
+    failed: number
+  }
+  recent_jobs: SyncJob[]
+}

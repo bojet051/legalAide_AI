@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
-import { BookOpenIcon, CloudArrowUpIcon, MagnifyingGlassIcon, RectangleStackIcon } from '@heroicons/react/24/outline'
+import { BookOpenIcon, CloudArrowUpIcon, MagnifyingGlassIcon, RectangleStackIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import clsx from 'clsx'
 import type { ActivityItem } from '../lib/types'
 
@@ -14,6 +14,7 @@ const navItems = [
   { label: 'Ingestion', to: '/ingest', icon: CloudArrowUpIcon },
   { label: 'Research', to: '/research', icon: MagnifyingGlassIcon },
   { label: 'Cases', to: '/cases', icon: BookOpenIcon },
+  { label: 'Sync', to: '/sync', icon: ArrowPathIcon },
 ]
 
 export default function AppShell({ children, activity }: AppShellProps) {

@@ -5,16 +5,18 @@ FastAPI entrypoint for LegalAide.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from legal_aide.api import router
+from legal_aide.api.routes import router, sync_router
 from legal_aide.config import get_settings
 from legal_aide.db.session import get_connection_pool
 from legal_aide.embeddings import EmbeddingClient, EmbeddingConfig
 from legal_aide.ingestion.pipeline import IngestionPipeline
 from legal_aide.rag.qa import RagEngine
+from legal_aide.sync import SyncService
 
 
 def create_app() -> FastAPI:
@@ -31,6 +33,10 @@ def create_app() -> FastAPI:
     db_pool = get_connection_pool(settings)
     pipeline = IngestionPipeline(settings, embedding_client, db_pool)
     rag_engine = RagEngine(settings, embedding_client, db_pool)
+    
+    # Initialize sync service
+    sync_download_dir = Path("data/sync_downloads")
+    sync_service = SyncService(db_pool, sync_download_dir)
 
     app = FastAPI(title="LegalAide", version="0.1.0")
     app.add_middleware(
@@ -40,11 +46,13 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(router)
+    app.include_router(sync_router)
     app.state.settings = settings
     app.state.embedding_client = embedding_client
     app.state.db_pool = db_pool
     app.state.pipeline = pipeline
     app.state.rag_engine = rag_engine
+    app.state.sync_service = sync_service
     return app
 
 
