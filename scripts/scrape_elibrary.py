@@ -232,13 +232,20 @@ class ElibraryScraper:
                 continue
             month_pairs: list[tuple[str, str]] = []
             for sibling in header.next_siblings:
-                if getattr(sibling, "name", "").lower() == "h2":
+                sibling_name = getattr(sibling, "name", None)
+                if sibling_name and sibling_name.lower() == "h2":
                     break
-                for anchor in getattr(sibling, "find_all", lambda *_args, **_kwargs: [])("a", href=True):
-                    month_label = anchor.get_text(strip=True)
-                    if not MONTH_PATTERN.match(month_label):
-                        continue
-                    month_pairs.append((month_label, anchor["href"]))
+                # Check if this sibling itself is an anchor
+                if sibling_name == "a" and sibling.get("href"):
+                    month_label = sibling.get_text(strip=True)
+                    if MONTH_PATTERN.match(month_label):
+                        month_pairs.append((month_label, sibling["href"]))
+                # Also check for anchors nested inside this sibling
+                elif hasattr(sibling, "find_all"):
+                    for anchor in sibling.find_all("a", href=True):
+                        month_label = anchor.get_text(strip=True)
+                        if MONTH_PATTERN.match(month_label):
+                            month_pairs.append((month_label, anchor["href"]))
             if month_pairs:
                 year_links[year] = month_pairs
         return year_links

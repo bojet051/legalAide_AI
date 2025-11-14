@@ -15,6 +15,11 @@ venv/
 # Logs
 *.log
 uvicorn.pid
+scraper.pid
+
+# Data and academic files
+data/
+ACADEMIC_PAPER.md
 
 # Frontend node artifacts
 frontend/node_modules/
