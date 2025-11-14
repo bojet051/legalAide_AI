@@ -50,8 +50,15 @@ class IngestionPipeline:
         self.db_pool = db_pool
 
     def ingest_file(self, file_path: str) -> tuple[int, int]:
-        """Process a single PDF file into the database."""
-        metadata, full_text = self.extract_text_and_metadata_from_pdf(file_path)
+        """Process a single PDF or TXT file into the database."""
+        path = Path(file_path)
+        if path.suffix.lower() == ".txt":
+            metadata, full_text = self.extract_text_and_metadata_from_txt(file_path)
+        elif path.suffix.lower() == ".pdf":
+            metadata, full_text = self.extract_text_and_metadata_from_pdf(file_path)
+        else:
+            raise ValueError(f"Unsupported file type: {path.suffix}. Expected .pdf or .txt")
+        
         chunks = self.chunk_case_text(full_text)
         chunks = self.embed_chunks(chunks)
         case_id = self.save_case_and_chunks_to_db(metadata, full_text, file_path, chunks)
@@ -59,13 +66,16 @@ class IngestionPipeline:
         return case_id, len(chunks)
 
     def reindex_folder(self, folder_path: str, drop_existing: bool = False) -> dict:
-        """Re-ingest all PDF files inside a folder."""
+        """Re-ingest all PDF and TXT files inside a folder."""
         folder = Path(folder_path)
         if not folder.exists():
             raise FileNotFoundError(f"{folder_path} does not exist")
 
-        pdf_files = sorted(path for path in folder.rglob("*") if path.suffix.lower() == ".pdf")
-        if not pdf_files:
+        files = sorted(
+            path for path in folder.rglob("*") 
+            if path.suffix.lower() in (".pdf", ".txt")
+        )
+        if not files:
             return {"cases": 0, "chunks": 0}
 
         with self.db_pool.connection() as conn:
@@ -75,11 +85,15 @@ class IngestionPipeline:
 
         total_cases = 0
         total_chunks = 0
-        for path in pdf_files:
-            case_id, chunk_count = self.ingest_file(str(path))
-            total_cases += 1
-            total_chunks += chunk_count
-            logger.debug("Reindexed %s -> case_id=%s", path, case_id)
+        for path in files:
+            try:
+                case_id, chunk_count = self.ingest_file(str(path))
+                total_cases += 1
+                total_chunks += chunk_count
+                logger.debug("Reindexed %s -> case_id=%s", path, case_id)
+            except Exception as exc:
+                logger.error("Failed to ingest %s: %s", path, exc)
+                continue
         return {"cases": total_cases, "chunks": total_chunks}
 
     # --- Pipeline stages -------------------------------------------------
@@ -94,6 +108,16 @@ class IngestionPipeline:
         combined = "\n\n".join(raw_pages).strip()
 
         cleaned = parsing.clean_text(combined)
+        metadata_dict = parsing.extract_case_metadata(cleaned)
+        metadata = CaseMetadata(**metadata_dict)
+        return metadata, cleaned
+
+    def extract_text_and_metadata_from_txt(self, path: str) -> tuple[CaseMetadata, str]:
+        """Extract text and metadata from a plain text file (e.g., scraped decisions)."""
+        path_obj = Path(path)
+        raw_text = path_obj.read_text(encoding="utf-8")
+        
+        cleaned = parsing.clean_text(raw_text)
         metadata_dict = parsing.extract_case_metadata(cleaned)
         metadata = CaseMetadata(**metadata_dict)
         return metadata, cleaned

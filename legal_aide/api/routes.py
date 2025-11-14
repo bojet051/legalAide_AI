@@ -29,6 +29,11 @@ class ReindexFolderRequest(BaseModel):
     drop_existing: bool = False
 
 
+class IngestScrapedDataRequest(BaseModel):
+    metadata_csv_path: str = Field(..., description="Path to metadata.csv from scraper.")
+    drop_existing: bool = False
+
+
 class SearchRequest(BaseModel):
     query: str
     court: Optional[str] = "PH Supreme Court"
@@ -59,6 +64,49 @@ async def reindex_folder(payload: ReindexFolderRequest, state=Depends(get_app_st
     pipeline = state.pipeline
     summary = await run_in_threadpool(pipeline.reindex_folder, payload.folder_path, payload.drop_existing)
     return summary
+
+
+@router.post("/ingest_scraped")
+async def ingest_scraped_data(payload: IngestScrapedDataRequest, state=Depends(get_app_state)):
+    """Ingest decisions from scraper metadata.csv with pre-extracted text files."""
+    import csv
+    from pathlib import Path
+    
+    metadata_path = Path(payload.metadata_csv_path)
+    if not metadata_path.exists():
+        raise HTTPException(status_code=404, detail=f"Metadata file not found: {payload.metadata_csv_path}")
+    
+    pipeline = state.pipeline
+    
+    if payload.drop_existing:
+        with state.db_pool.connection() as conn:
+            queries.delete_all_cases(conn)
+    
+    total_cases = 0
+    total_chunks = 0
+    failed = []
+    
+    with metadata_path.open(encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            text_path = row.get("text_path", "")
+            if not text_path or not Path(text_path).exists():
+                failed.append(f"Missing text file: {text_path}")
+                continue
+            
+            try:
+                case_id, chunk_count = await run_in_threadpool(pipeline.ingest_file, text_path)
+                total_cases += 1
+                total_chunks += chunk_count
+            except Exception as exc:
+                failed.append(f"{text_path}: {exc}")
+                continue
+    
+    return {
+        "cases": total_cases,
+        "chunks": total_chunks,
+        "failed": failed,
+    }
 
 
 @router.post("/search")

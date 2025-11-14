@@ -84,7 +84,7 @@ export default function AppShell({ children, activity }: AppShellProps) {
           <div className="flex items-center gap-3">
             <span className="rounded-full bg-brand-navy/10 px-3 py-1 text-xs font-semibold text-brand-navy">{envLabel}</span>
             <a
-              href="http://localhost:8000/docs"
+              href={`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}/docs`}
               target="_blank"
               rel="noreferrer"
               className="rounded-full border border-brand-navy/30 px-3 py-1 text-xs font-medium text-brand-navy hover:bg-brand-navy hover:text-white"
